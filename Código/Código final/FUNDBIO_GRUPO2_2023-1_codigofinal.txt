@@ -1,0 +1,336 @@
+/*FUNDBIO_GRUPO2_2023-1
+Integrantes:
+- Untiveros Alvaro
+- Manzano Alvaro
+- Brachowicz Mariel
+- Vargas Angela
+- Fernandez Brayamn
+
+Código de simulación del funcionamiento*/
+
+//Inclusión de librerías
+#include <math.h>
+#include <Wire.h>
+#include <Servo.h>
+#include <LiquidCrystal_I2C.h>
+
+//Definición de entradas y salidas
+//SENSORES FSR:
+  #define fsr1pin A0
+  #define fsr2pin A1
+
+ int tiempoinflado = 20000;
+
+//BOMBAS en pines pwm:
+  const int bomba1 = 6;
+  const int bomba2 = 9;
+//VÀLVULAS SELENOIDES en pines pwm:
+  const int selenoide1 = 10;
+  const int selenoide2 = 11;
+//SWITCHES:
+  const int sw1 = 3;
+  const int sw2 = 4;
+  const int sw3 = 5;
+  const int sw4 = 7;
+//PULSADOR PARA ACTIVAR MODO MANUAL
+  const int interruptPin  = 2;
+//SERVOS:
+  Servo servo;//como objeto
+
+//Declaraciòn de àngulos para el movimiento del servo:
+int posIni = 0;   //INFLA
+int posFin = 125; //DESINFLA
+
+//Define variable to store sensor readings:
+int fsrreading1; //Variable to store FSR value
+int fsrreading2;
+int peso1=0;
+int peso2=0;
+
+
+//Inclusiòn de la pantalla LCD 16x2 por comunicaciòn I2C:
+LiquidCrystal_I2C lcd(0x27, 16, 2);
+
+void setup(){
+  //Comunicaciòn serial a 9600 bd para la depuraciòn
+  Serial.begin(9600); //Comunicaciòn serial a 9600 bd
+  DEFINIR_i_o();      //Defino entradas y salidas
+  servo.attach(12);
+  INICIALIZAR_ELEMENTOS();//Condiciones iniciales para el funcionamiento
+  attachInterrupt(digitalPinToInterrupt(interruptPin), MODOMANUAL, RISING);
+}
+void loop(){
+  int sw1_state= digitalRead(sw1);//iniciaciòn total del programa
+  if(sw1_state==1){
+    //empieza a inflar las almohadillas
+    lcd.setCursor(0, 0);
+ 	    lcd.print("INFLANDO        ");
+    lcd.setCursor(0, 1);
+   	  lcd.print("ALMOHADILLAS    ");
+
+    INFLAR(bomba1,selenoide1);
+    INFLAR(bomba2,selenoide2);
+    delay(tiempoinflado);
+    
+    //////////////////////////////////////////////////////////////////////////HASTA AQUI TENGO AMBAS INFLADAS
+    DETENER_INFLADO(bomba1,selenoide1);
+    DETENER_INFLADO(bomba1,selenoide1);
+      lcd.setCursor(0, 0);
+ 	     lcd.print("COLOCA LA       ");
+      lcd.setCursor(0, 1);
+   	   lcd.print("MANO            ");
+    int sw2_state= digitalRead(sw2);
+    if(sw2_state==1){
+      lcd.setCursor(0, 0);
+ 	     lcd.print("LEYENDO         ");
+      lcd.setCursor(0, 1);
+   	   lcd.print("SENSORES--------");
+      delay(1000);
+    }
+    while(sw2_state==1){
+      //mientras el sw esté activado debe mostrase las lecturas de los sensores
+      sw2_state= digitalRead(sw2);
+      //INICIAR LECTURA DE SENSORES---------------------------------------------------------------------------------------------------------------
+        // Read the FSR pin and store the output as fsrreading:
+    	fsrreading1 = analogRead(fsr1pin);
+        delay(20);//delay para darle tiempo de convertir
+ 	    fsrreading2 = analogRead(fsr2pin);
+       delay(20);//delay para darle tiempo de convertir
+      //Mostrar en el monitor serial las lecturas de 0 a 1024
+        Serial.print("Analog reading 1 = ");
+        Serial.print(fsrreading1);
+        Serial.print("| Analog reading 2 = ");
+        Serial.println(fsrreading2);
+      //El sensor lee entre 0.1 y 200N
+      //necesitamos convertir el valor 
+      // "analogRead" usa 1024 como màximo entonces:
+      peso1=fsrreading1*20/914;
+      peso2=fsrreading2*20/914;
+        Serial.print("   Peso1 = ");
+        Serial.print(peso1);
+        Serial.print("| Peso2 = ");
+        Serial.println(peso2);
+      //imprimir las conversiones en la pantalla
+        //peso1
+          lcd.setCursor(0, 0);
+          lcd.print("Peso1 =");
+          lcd.print(peso1);
+          lcd.print(" N   ");
+        //peso2
+          lcd.setCursor(0, 1);
+          lcd.print("Peso2 =");
+          lcd.print(peso2);
+          lcd.print(" N   ");
+    }
+    
+    lcd.setCursor(0,0);
+    lcd.print("REDISTRIBUYENDO    ");
+    lcd.setCursor(0,1);
+    lcd.print("PRESIONES          ");
+
+    //INICIAMOS A DISTRIBUIR LAS PRESIONES DE LAS ALMOHADILLAS-----------------------------------------------------------------------------------------------------
+
+    int fuerzaPromedio=peso1+peso2;
+    if(peso1<fuerzaPromedio){
+      int p1_1=peso1;//variable de control 1.1
+      while(p1_1<fuerzaPromedio){
+        INFLAR(bomba1,selenoide1);
+        p1_1=(analogRead(fsr1pin))*20/914;
+        delay(20);
+      }
+      DETENER_INFLADO(bomba1,selenoide1);
+    }
+    else{
+      if(peso1>fuerzaPromedio){
+        int p1_2=peso1;//variable de contol 1.2
+        while(p1_2>fuerzaPromedio){
+          DESINFLAR(bomba1,selenoide1);
+          p1_2=(analogRead(fsr1pin))*20/914;
+          delay(20);
+        }
+        DETENER_INFLADO(bomba1,selenoide1);
+      }
+    }
+    if(peso2<fuerzaPromedio){
+      int p2_1=peso2;//variable de control 2.1
+      while(p2_1<fuerzaPromedio){
+        INFLAR(bomba2,selenoide2);
+        p2_1=(analogRead(fsr2pin))*20/914;
+        delay(20);
+      }
+      DETENER_INFLADO(bomba2,selenoide2);
+    }
+    else{
+      if(peso2>fuerzaPromedio){
+        int p2_2=peso2;//variable de contol 2.2
+        while(p2_2>fuerzaPromedio){
+          DESINFLAR(bomba2,selenoide2);
+          p2_2=(analogRead(fsr2pin))*20/914;
+          delay(20);
+        }
+        DETENER_INFLADO(bomba2,selenoide2);
+      }
+    }
+    delay(20);
+    //HASTA AQUÍ TENEMOS TODAS LAS ALMOHADILLAS A LA MISMA PRESIÓN
+    //INICIO DE LA ITERACIÓN---------------------------------------------------------------------------------------------------------------------------------------
+    int sw3_state = digitalRead(sw3);
+    int p1_3;
+    int p2_3;
+
+    if(sw3_state==1){
+      //inicia la iteración
+      int niteracion=0;//variable para definir cuál se infla y cuál desinfla
+      if(niteracion==0){
+        niteracion=1;//para la siguiente iteración
+        p1_3=0;
+        p2_3=0;
+
+        while(p1_3<(2*fuerzaPromedio)){
+            while(p2_3>(fuerzaPromedio/2)){
+              DESINFLAR(bomba2,selenoide2);
+              p2_3=(analogRead(fsr2pin))*20/914;
+            }
+            DETENER_INFLADO(bomba2,selenoide2);
+            INFLAR(bomba1,selenoide1);
+            p1_3=(analogRead(fsr1pin))*20/914;
+        }
+        DETENER_INFLADO(bomba1,selenoide1);
+        lcd.setCursor(0, 0);
+ 	       lcd.print("ALMH1= INFLA     ");
+        lcd.setCursor(0, 1);
+   	     lcd.print("ALMH2= DESINFLA  ");
+      }
+      else{
+        if(niteracion==1){
+          niteracion=0;//vuelve a la primera
+          p1_3=0;
+          p2_3=0;
+          
+          while(p2_3<(2*fuerzaPromedio)){
+            while(p1_3>(fuerzaPromedio/2)){
+              DESINFLAR(bomba1,selenoide1);
+              p1_3=(analogRead(fsr1pin))*20/914;
+            }
+            DETENER_INFLADO(bomba1,selenoide1);
+            INFLAR(bomba2,selenoide2);
+            p2_3=(analogRead(fsr2pin))*20/914;
+          }
+          DETENER_INFLADO(bomba2,selenoide2);
+          lcd.setCursor(0, 0);
+ 	         lcd.print("ALMH1= DESINFLA     ");
+          lcd.setCursor(0, 1);
+   	       lcd.print("ALMH2= INFLA        ");
+        }
+      }
+    }
+    else{
+      lcd.setCursor(0, 0);
+ 	     lcd.print("Deslice sw2          ");
+      lcd.setCursor(0, 1);
+   	   lcd.print("para iterar          ");
+    }
+  }
+  else{
+    lcd.setCursor(0, 0);
+ 	    lcd.print("Deslice swich1");
+    lcd.setCursor(0, 1);
+   	  lcd.print("para inciar...");
+  }
+}
+
+
+void DEFINIR_i_o(){
+  pinMode(bomba1,OUTPUT);
+  pinMode(bomba2,OUTPUT);
+  pinMode(selenoide1,OUTPUT);
+  pinMode(selenoide2,OUTPUT);
+  pinMode(sw1,INPUT);
+  pinMode(sw2,INPUT);
+  pinMode(sw3,INPUT);
+  pinMode(sw4,INPUT);
+}
+void INICIALIZAR_ELEMENTOS(){
+  analogWrite(bomba1,0);//bombas inicialmente apagadas
+  analogWrite(bomba2,0);
+  analogWrite(selenoide1,255);//selenoides inicialmente prendidos para evitar la salida de aire
+  analogWrite(selenoide2,255);
+
+  servo.write(posIni);
+
+  lcd.begin(16, 2);        // Inicializar la pantalla LCD
+  lcd.setBacklight(HIGH);
+}
+void INFLAR(int bomba, int valvula){
+  servo.write(posIni);
+  analogWrite(bomba,255);
+  analogWrite(valvula,255);
+}
+void DESINFLAR(int bomba, int valvula){
+  servo.write(posFin);
+  analogWrite(bomba,0);
+  analogWrite(valvula,0);
+}
+void DETENER_INFLADO(int bomba,int valvula){
+  servo.write(90);
+  analogWrite(bomba,0);
+  analogWrite(valvula,255);
+}
+/*int INICIAR_LECTURA(){
+  // Read the FSR pin and store the output as fsrreading:
+ 	fsrreading1 = analogRead(fsr1pin);
+   delay(20);//delay para darle tiempo de convertir
+ 	fsrreading2 = analogRead(fsr2pin);
+   delay(20);//delay para darle tiempo de convertir
+  //Mostrar en el monitor serial las lecturas de 0 a 1024
+    Serial.print("Analog reading 1 = ");
+    Serial.print(fsrreading1);
+    Serial.print("| Analog reading 2 = ");
+    Serial.println(fsrreading2);
+  //El sensor lee entre 0.1 y 200N
+  //necesitamos convertir el valor 
+  // "analogRead" usa 1024 como màximo entonces:
+  peso1=fsrreading1*20/914;
+  peso2=fsrreading2*20/914;
+   Serial.print("   Peso1 = ");
+   Serial.print(peso1);
+   Serial.print("| Peso2 = ");
+   Serial.println(peso2);
+  //imprimir las conversiones en la pantalla
+  //peso1
+   lcd.setCursor(0, 0);
+   lcd.print("Peso1 =");
+   lcd.print(peso1);
+   lcd.print(" N   ");
+   //peso2
+   lcd.setCursor(0, 1);
+   lcd.print("Peso2 =");
+   lcd.print(peso2);
+   lcd.print(" N   ");
+  int pesoPromedio = peso1+peso2/2;
+  return pesoPromedio;
+}*/
+void MODOMANUAL(){
+  int sw4_state=digitalRead(sw4);
+  lcd.setCursor(0, 0);
+ 	    lcd.print("--MODO MANUAL---");
+  if(sw4_state=1){
+    INFLAR(bomba1,selenoide1);
+    INFLAR(bomba2,selenoide2);
+    lcd.setCursor(0, 1);
+ 	    lcd.print("Inflando--------");
+  }
+  else{
+    if(sw4_state=0){
+      DESINFLAR(bomba1,selenoide1);
+      DESINFLAR(bomba2,selenoide2);
+      lcd.setCursor(0, 1);
+ 	    lcd.print("Desinflando--------");
+    }
+  }
+  delay(3000);
+  lcd.setCursor(0,0);
+  lcd.print("                  ");
+  lcd.setCursor(0,1);
+  lcd.print("                  ");
+}

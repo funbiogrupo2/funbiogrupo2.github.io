@@ -1,0 +1,90 @@
+#include <math.h>
+#include <Wire.h>
+#include <LiquidCrystal_I2C.h>
+
+// Define FSR pin:
+#define fsr1pin A0
+#define fsr2pin A1
+//defino swich
+const int pinSwitch = 2;
+
+LiquidCrystal_I2C lcd(0x27, 16, 2); // Dirección I2C de la pantalla y tamaño (16x2)
+
+//Define variable to store sensor readings:
+int fsrreading1; //Variable to store FSR value
+int fsrreading2;
+int presion1=0;
+int presion2=0;
+
+
+
+void setup() {
+  // Begin serial communication at a baud rate of 9600:
+  //defino I/O
+  pinMode(pinSwitch, INPUT);
+  Serial.begin(9600);
+  lcd.begin(16, 2);  // Inicializa la pantalla
+  lcd.setBacklight(HIGH);
+}
+
+void loop() {
+  int estadoSwitch = digitalRead(pinSwitch);
+  if(estadoSwitch==1){
+ 	 // Read the FSR pin and store the output as fsrreading:
+ 	 fsrreading1 = analogRead(fsr1pin);
+ 	 fsrreading2 = analogRead(fsr2pin);
+	
+	  // Print the fsrreading1 in the serial monitor:
+	  // Print the string "Analog reading = ".
+	  Serial.print("Analog reading 1 = ");
+	  // Print the fsrreading:
+	  Serial.print(fsrreading1);
+	  
+	  // Print the fsrreading2 in the serial monitor:
+	  // Print the string "Analog reading = ".
+	  Serial.print("Analog reading 2 = ");
+	  // Print the fsrreading:
+	  Serial.print(fsrreading2);
+	
+	  // We can set some threshholds to display how much pressure is roughly applied:
+ 	 if (fsrreading1 < 10) {
+ 	   Serial.println(" - No pressure");
+	  } else if (fsrreading1 < 200) {
+	   Serial.println(" - Light touch");
+	  } else if (fsrreading1 < 500) {
+	    Serial.println(" - Light squeeze");
+  	} else if (fsrreading1 < 800) {
+   	 Serial.println(" - Medium squeeze");
+ 	 } else {
+ 	   Serial.println(" - Big squeeze");
+ 	 }
+ 	 //The sensibilities values are between 0.1-100N
+ 	 //we need to convert this value
+ 	 // "analogRead" uses 1024 as maximum value,so:
+ 	 presion1=fsrreading1*20/914;
+ 	 presion2=fsrreading2*20/914;
+ 	 Serial.print("Preasure1 = ");
+ 	 Serial.println(presion1);
+ 	 Serial.print("Preasure2 = ");
+ 	 Serial.println(presion2);
+ 	 //imprimir presiones en pantalla
+ 	 //presion1
+ 	 lcd.setCursor(0, 0);
+ 	 lcd.print("Presion1 =");
+ 	 lcd.print(presion1);
+ 	 lcd.print(" N   ");
+ 	 //presion2
+ 	 lcd.setCursor(0, 1);
+ 	 lcd.print("Presion2 =");
+ 	 lcd.print(presion2);
+     lcd.print(" N   ");
+  }
+  else{
+    lcd.setCursor(0, 0);
+ 	  lcd.print("Deslice swich");
+    lcd.setCursor(0, 1);
+   	  lcd.print("para inciar...");
+  }
+
+  delay(500); //Delay 500 ms.
+}
