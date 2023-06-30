@@ -1,0 +1,82 @@
+#include <Servo.h>
+#include <LiquidCrystal_I2C.h>
+
+Servo servo; // Crea un objeto de la clase Servo
+LiquidCrystal_I2C lcd(0x27, 16, 2);
+
+const int switchPin = 2; // Pin donde está conectado el interruptor deslizante
+const int bomba_I = 5;
+const int valvula = 6;
+const int bomba_D = 10;
+const int swGlobal = 3;
+
+int posInicial = 0; // INFLA
+int posFinal = 125; // DESINFLA
+
+
+void setup() {
+  // put your setup code here, to run once:
+  Serial.begin(9600);
+
+  servo.attach(9);
+  
+  pinMode(swGlobal,OUTPUT);
+  pinMode(bomba_I,OUTPUT);
+  pinMode(bomba_D,OUTPUT);
+  pinMode(valvula,OUTPUT);
+  pinMode(switchPin,INPUT);
+
+  analogWrite(bomba_D,0);//bombas inicialmente apagadas
+  analogWrite(bomba_I,0);
+  analogWrite(valvula,255);
+  
+  servo.write(posInicial);
+
+  lcd.begin(16, 2);        // Inicializar la pantalla LCD
+  lcd.setBacklight(HIGH);
+}
+
+void loop() {
+  // put your main code here, to run repeatedly:
+  int swG_state = digitalRead(swGlobal);
+  if(swG_state==1){
+    int switchState = digitalRead(switchPin);
+    if(switchState==1){
+      INFLAR();
+      
+    }
+    if(switchState==0){
+      DESINFLAR();
+    }
+  }
+  else{
+    lcd.setCursor(0,0);
+    lcd.print("DESLICE PARA       ");
+    lcd.setCursor(0,1);
+    lcd.print("INICIAR            ");
+    analogWrite(bomba_I,0);
+    analogWrite(bomba_D,0);
+  }
+}
+void INFLAR(){
+      servo.write(posInicial);
+      analogWrite(bomba_I,255);
+      analogWrite(bomba_D,0);
+      analogWrite(valvula,255);
+      Serial.println("INFLANDO");
+      lcd.setCursor(0, 0);
+      lcd.print("INFLANDO            ");
+      lcd.setCursor(0, 1);
+      lcd.print("                    ");
+}
+void DESINFLAR(){
+      servo.write(posFinal);
+      analogWrite(bomba_I,0);
+      analogWrite(bomba_D,255);
+      analogWrite(valvula,0);
+      Serial.println("Desinflando-------------");
+      lcd.setCursor(0, 0);
+      lcd.print("DESINFLANDO         ");
+      lcd.setCursor(0, 1);
+      lcd.print("                    ");
+}

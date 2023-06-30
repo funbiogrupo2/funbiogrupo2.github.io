@@ -1,0 +1,40 @@
+#include <Servo.h>
+
+const int switchPin = 2;
+const int motorPin = 4;
+const int servo1Pin = 5; 
+const int servo2Pin = 6;
+const int servo3Pin = 7;
+
+
+Servo servo1;
+Servo servo2;
+Servo servo3; 
+
+void setup() {
+ pinMode(switchPin, INPUT_PULLUP);
+ pinMode(motorPin, OUTPUT);
+
+ servo1.attach(servo1Pin);
+ servo2.attach(servo2Pin);
+ servo3.attach(servo3Pin);
+}
+
+void loop() {
+ int switchState = digitalRead(switchPin);
+
+ if (switchState == LOW) {
+  digitalWrite(motorPin, HIGH);
+  rotateServos(45);
+  delay(2000);
+  rotateServos(0);
+  digitalWrite(motorPin, LOW);
+  delay(1000);
+ }
+}
+
+void rotateServos(int angle) {
+ servo1.write(angle);
+ servo2.write(angle);
+ servo3.write(angle);
+}

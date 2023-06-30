@@ -1,0 +1,58 @@
+
+//////////////////////////////////////////////////////////////////////////////////////////
+#include <Wire.h>
+#include <LiquidCrystal_I2C.h>
+
+LiquidCrystal_I2C lcd(0x27, 16, 2); // Dirección I2C y tamaño de la pantalla LCD
+
+const int switchPin = 2; // Pin donde está conectado el interruptor deslizante
+const int bomba = 5;
+const int selenoide =6;
+
+int counter = 0;         // Contador de segundos
+
+void setup() {
+  lcd.begin(16, 2);        // Inicializar la pantalla LCD
+  lcd.setBacklight(HIGH);
+  //lcd.print("Contador:");  // Mostrar etiqueta inicial en la pantalla LCD
+
+  pinMode(switchPin, INPUT); // Establecer el pin del interruptor deslizante como entrada
+  pinMode(bomba,OUTPUT);//bomba como salida
+  pinMode(selenoide, OUTPUT);
+  digitalWrite(selenoide,HIGH);
+}
+
+void loop(){
+  contarConBomba();
+  //delay(10000);
+}
+
+void contarConBomba(){
+  
+  int switchState = digitalRead(switchPin); // Leer el estado del interruptor deslizante
+  while(switchState==0){
+    switchState = digitalRead(switchPin);
+    digitalWrite(selenoide,LOW);
+    lcd.setCursor(0,0);
+    lcd.print("DESINFLANDO           ");
+    lcd.setCursor(0,1);
+    lcd.print("DESL_PARA_INF            ");
+    analogWrite(bomba, 0);
+  };//mientras no se prende no hace nada
+  //cuando se prende
+  lcd.clear();
+  digitalWrite(selenoide,HIGH);
+  for(int i=0; i<15; i++){
+    digitalWrite(selenoide,HIGH);
+    lcd.setCursor(0, 0);
+    lcd.print("BOMBA ENCENDIDA");
+    lcd.setCursor(0, 1); // Establecer la posición del cursor en la segunda línea de la pantalla LCD
+    lcd.print("t=              ");
+    lcd.setCursor(5,1);
+    lcd.print(i);  // Mostrar el valor del contador en la pantalla LCD
+    analogWrite(bomba, 255);  // Bomba a la potencia máxima con el TIP
+     delay(1000); // Esperar 1 segundo
+  }
+}
+
+

@@ -1,0 +1,63 @@
+#include <Wire.h>
+#include <LiquidCrystal_I2C.h>
+
+// Dirección I2C de la pantalla LCD
+const int lcdAddress = 0x27;
+
+// Pin para el interruptor
+const int switchPin = 3;
+
+// Objeto para controlar la pantalla LCD
+LiquidCrystal_I2C lcd(lcdAddress, 16, 2);
+
+// Variables para el contador y el estado del interruptor
+volatile unsigned long counter = 0;
+volatile bool switchState = false;
+volatile bool lastSwitchState = false;
+
+void setup() { 
+  // Inicializar la comunicación I2C
+  Wire.begin();
+  
+  // Inicializar la pantalla LCD
+  lcd.begin(16, 2);
+  
+  // Establecer el texto inicial en la pantalla
+  lcd.setBacklight(HIGH);
+  lcd.setCursor(0, 0);
+  lcd.print("INF_ALMH");
+  
+  lcd.setCursor(0, 1);
+  lcd.print("t=");
+  
+  // Registrar la función de interrupción para el cambio de estado del interruptor
+  attachInterrupt(digitalPinToInterrupt(switchPin), switchInterrupt, CHANGE);
+}
+
+void loop() {
+  // Verificar si el interruptor ha sido apagado
+  if (switchState == false && lastSwitchState == true) {
+    // Reiniciar el contador
+    counter = 0;
+  }
+  
+  // Actualizar el contador en la pantalla LCD
+  lcd.setCursor(2, 1);
+  lcd.print("      "); // Borrar el contador anterior
+  lcd.setCursor(2, 1);
+  lcd.print(counter);
+  
+  // Guardar el estado del interruptor
+  lastSwitchState = switchState;
+  
+  // Esperar 1 segundo
+  delay(1000);
+  
+  // Incrementar el contador
+  counter++;
+}
+
+// Función de interrupción para el cambio de estado del interruptor
+void switchInterrupt() {
+  switchState = digitalRead(switchPin);
+}
